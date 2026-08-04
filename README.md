@@ -1,6 +1,6 @@
 # Kart Clash
 
-A small, no-account kart battle game inspired by arcade kart combat games. Start a **Solo battle** against three AI karts, or share a room code with friends for multiplayer.
+A small, no-account kart battle game inspired by arcade kart combat games. Start a **Solo battle** against three AI karts, or share a room code with friends for multiplayer (up to 10 drivers per room).
 
 ## Run it locally
 
@@ -18,6 +18,16 @@ Open `http://localhost:3000`. To play on the same Wi-Fi network, open `http://YO
 - **A,D / Left,Right** — steer
 - **Space** — fire
 - Touch controls appear on mobile
+
+## Match rules and power-ups
+
+Every match has three timed rounds: **3 minutes**, then **1 minute**, then **1 minute**. Takedowns add to your high score; the leading driver is celebrated for three seconds after each round, and the final high-score leader wins the match.
+
+- ⚡ **Turbo** — temporary speed boost
+- ◈ **Shield** — temporary damage protection
+- + **Repair** — restore one health point
+- **R Rocket** — a slow, powerful two-hit shot for nine seconds
+- **≋ Triple Shot** — fires three bolts at once for nine seconds
 
 ## Install it like an app
 

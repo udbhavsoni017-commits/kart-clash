@@ -8,6 +8,7 @@ const roomInput = document.querySelector('#room');
 const hud = document.querySelector('#hud');
 const touchControls = document.querySelector('#touch-controls');
 const roomCode = document.querySelector('#room-code');
+const matchTimer = document.querySelector('#match-timer');
 const status = document.querySelector('#status span');
 const leaderboard = document.querySelector('#leaderboard');
 const selfCard = document.querySelector('#self-card');
@@ -29,6 +30,7 @@ const palette = {
   grass: '#2f9a70', grassDark: '#23865e', road: '#30385d', roadEdge: '#52618b',
   lane: '#ffc852', shadow: 'rgba(9, 21, 53, .22)'
 };
+const WEAPON_LABELS = { blaster: 'BLASTER • 1 HIT', rocket: 'ROCKET • 2 HIT', triple: 'TRIPLE SHOT • 3 BOLTS' };
 
 function resize() {
   const dpr = Math.min(devicePixelRatio || 1, 2);
@@ -200,8 +202,8 @@ function drawObstacle(obstacle, cam) {
 
 function drawPickup(pickup, cam, time) {
   const at = worldToScreen(pickup.x, pickup.y, cam); const bob = Math.sin(time / 180 + pickup.x) * 3;
-  const colors = { boost: '#baff42', shield: '#55dcff', repair: '#ff6f8d' };
-  const symbols = { boost: '⚡', shield: '◈', repair: '+' };
+  const colors = { boost: '#baff42', shield: '#55dcff', repair: '#ff6f8d', rocket: '#ff7445', triple: '#d7ff4d' };
+  const symbols = { boost: '⚡', shield: '◈', repair: '+', rocket: 'R', triple: '≋' };
   ctx.save(); ctx.translate(at.x, at.y + bob * cam.scale); ctx.scale(cam.scale, cam.scale);
   ctx.fillStyle = 'rgba(8, 24, 52, .35)'; ctx.beginPath(); ctx.ellipse(0, 15, 15, 5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = colors[pickup.kind]; ctx.shadowColor = colors[pickup.kind]; ctx.shadowBlur = 13;
@@ -229,8 +231,8 @@ function drawKart(player, cam, own) {
 }
 
 function drawProjectile(shot, cam) {
-  const at = worldToScreen(shot.x, shot.y, cam); const r = Math.max(3, 6 * cam.scale);
-  ctx.save(); ctx.fillStyle = '#fff7bd'; ctx.shadowColor = '#ffc745'; ctx.shadowBlur = 16; ctx.beginPath(); ctx.arc(at.x, at.y, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  const at = worldToScreen(shot.x, shot.y, cam); const r = Math.max(3, (shot.size || 6) * cam.scale);
+  ctx.save(); ctx.fillStyle = shot.color || '#fff7bd'; ctx.shadowColor = shot.color || '#ffc745'; ctx.shadowBlur = 16; ctx.beginPath(); ctx.arc(at.x, at.y, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
 }
 
 function draw() {
@@ -254,12 +256,24 @@ function draw() {
 
 function updateHud(you) {
   const sorted = [...game.players].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
-  leaderboard.innerHTML = `<h2>Race control</h2>${sorted.map((player, index) => `<div class="rank ${player.id === socket.id ? 'me' : ''}"><span class="place">${index + 1}.</span><span>${escapeHtml(player.name)}</span><span class="points">${player.score}</span></div>`).join('')}`;
-  status.textContent = game.players.length > 1 ? `${game.players.length} drivers on track` : 'Waiting for drivers…';
+  leaderboard.innerHTML = `<h2>High score</h2>${sorted.map((player, index) => `<div class="rank ${player.id === socket.id ? 'me' : ''}"><span class="place">${index + 1}.</span><span>${escapeHtml(player.name)}${player.bot ? ' <small>AI</small>' : ''}</span><span class="points">${player.score}</span></div>`).join('')}`;
+  matchTimer.innerHTML = `<span>ROUND ${game.round} / ${game.totalRounds}</span><strong>${formatTime(game.timeLeft)}</strong>`;
+  status.textContent = game.phase === 'celebration' ? 'Score locked — winner!' : `${game.players.length} / ${game.maxPlayers} drivers`;
   if (!you) return;
   const hearts = Array.from({ length: 3 }, (_, index) => `<span class="heart ${index >= you.health ? 'empty' : ''}">♥</span>`).join('');
-  selfCard.innerHTML = `<div>${escapeHtml(you.name)} <span style="color:#aebce4;font-size:11px">${you.score} TAKEDOWNS</span></div><div class="health">${hearts}</div>${you.boost ? '<div class="boost">⚡ TURBO ACTIVE</div>' : you.shield ? '<div class="boost" style="color:#55dcff">◈ SHIELD ACTIVE</div>' : ''}`;
-  message.textContent = you.respawning ? `WRECKED!\nBack in ${(you.respawning / 1000).toFixed(1)}…` : (game.players.length === 1 ? 'Invite a friend\nto this room!' : '');
+  selfCard.innerHTML = `<div>${escapeHtml(you.name)} <span style="color:#aebce4;font-size:11px">${you.score} TAKEDOWNS</span></div><div class="health">${hearts}</div><div class="boost" style="color:${you.weapon === 'rocket' ? '#ff9a6e' : you.weapon === 'triple' ? '#d7ff4d' : '#b6c5e8'}">${WEAPON_LABELS[you.weapon] || WEAPON_LABELS.blaster}</div>${you.boost ? '<div class="boost">⚡ TURBO ACTIVE</div>' : you.shield ? '<div class="boost" style="color:#55dcff">◈ SHIELD ACTIVE</div>' : ''}`;
+  if (game.phase === 'celebration' && game.winner) {
+    message.textContent = `${game.winner.final ? 'MATCH WINNER!' : 'ROUND WINNER!'}\n${game.winner.name} • ${game.winner.score} POINTS`;
+    message.classList.add('celebration');
+  } else {
+    message.classList.remove('celebration');
+    message.textContent = you.respawning ? `WRECKED!\nBack in ${(you.respawning / 1000).toFixed(1)}…` : (game.players.length === 1 ? 'Invite up to 9 friends\nto this room!' : '');
+  }
+}
+
+function formatTime(milliseconds) {
+  const seconds = Math.max(0, Math.ceil(milliseconds / 1000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
 function escapeHtml(text) { return String(text).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]); }

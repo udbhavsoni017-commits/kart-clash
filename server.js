@@ -9,10 +9,13 @@ const io = new Server(server, { transports: ['websocket', 'polling'] });
 
 const PORT = process.env.PORT || 3000;
 const TICK_RATE = 30;
+const MAX_PLAYERS = 10;
+const ROUND_DURATIONS = [180000, 60000, 60000];
+const CELEBRATION_MS = 3000;
 const WORLD = { width: 1800, height: 1000 };
 const SPAWNS = [
   [210, 215], [1590, 215], [210, 785], [1590, 785],
-  [900, 170], [900, 830], [350, 500], [1450, 500]
+  [900, 170], [900, 830], [350, 500], [1450, 500], [630, 185], [1170, 815]
 ];
 const OBSTACLES = [
   { x: 900, y: 500, r: 130 },
@@ -21,7 +24,12 @@ const OBSTACLES = [
   { x: 1280, y: 335, r: 58 },
   { x: 520, y: 665, r: 58 }
 ];
-const COLORS = ['#ff5b58', '#34c8ff', '#ffc94f', '#a98bff', '#42dd9b', '#ff80ba', '#ff9e52', '#60d8bd'];
+const COLORS = ['#ff5b58', '#34c8ff', '#ffc94f', '#a98bff', '#42dd9b', '#ff80ba', '#ff9e52', '#60d8bd', '#70a6ff', '#f08c55'];
+const WEAPONS = {
+  blaster: { damage: 1, cooldown: 430, speed: 720, count: 1, spread: 0, color: '#fff7bd', size: 6, ttl: 1500 },
+  rocket: { damage: 2, cooldown: 930, speed: 500, count: 1, spread: 0, color: '#ff7445', size: 10, ttl: 1700 },
+  triple: { damage: 1, cooldown: 740, speed: 680, count: 3, spread: 0.2, color: '#baff42', size: 6, ttl: 1400 }
+};
 const rooms = new Map();
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -33,12 +41,18 @@ function cleanText(value, fallback, max) {
 }
 
 function createRoom(code) {
+  const now = Date.now();
   return {
     code,
     players: new Map(),
     projectiles: [],
     pickups: [],
-    nextPickupAt: Date.now() + 2000
+    nextPickupAt: now + 2000,
+    roundIndex: 0,
+    roundEndsAt: now + ROUND_DURATIONS[0],
+    phase: 'playing',
+    celebrationEndsAt: 0,
+    winner: null
   };
 }
 
@@ -47,7 +61,7 @@ function makePlayer(id, name, index, isBot = false) {
   return {
     id, name, x: spawn[0], y: spawn[1], angle: index % 2 ? Math.PI : 0,
     color: COLORS[index % COLORS.length], health: 3, score: 0, streak: 0,
-    boost: 0, shield: 0, respawnAt: 0, lastShot: 0,
+    boost: 0, shield: 0, weapon: 'blaster', weaponUntil: 0, respawnAt: 0, lastShot: 0,
     input: { up: false, down: false, left: false, right: false },
     flash: 0, isBot
   };
@@ -85,7 +99,7 @@ function nudgeOutOfObstacle(entity) {
 }
 
 function addPickup(room) {
-  const kinds = ['boost', 'shield', 'repair'];
+  const kinds = ['boost', 'shield', 'repair', 'rocket', 'triple'];
   for (let attempt = 0; attempt < 30; attempt += 1) {
     const pickup = {
       id: `${Date.now()}-${Math.random()}`,
@@ -102,17 +116,24 @@ function addPickup(room) {
 
 function fire(room, player) {
   const now = Date.now();
-  if (!alive(player) || now - player.lastShot < 430) return;
+  const weapon = WEAPONS[player.weapon] || WEAPONS.blaster;
+  if (room.phase !== 'playing' || !alive(player) || now - player.lastShot < weapon.cooldown) return;
   player.lastShot = now;
-  room.projectiles.push({
-    id: `${player.id}-${now}`,
-    ownerId: player.id,
-    x: player.x + Math.cos(player.angle) * 32,
-    y: player.y + Math.sin(player.angle) * 32,
-    vx: Math.cos(player.angle) * 720,
-    vy: Math.sin(player.angle) * 720,
-    expiresAt: now + 1500
-  });
+  for (let index = 0; index < weapon.count; index += 1) {
+    const angle = player.angle + (index - (weapon.count - 1) / 2) * weapon.spread;
+    room.projectiles.push({
+      id: `${player.id}-${now}-${index}`,
+      ownerId: player.id,
+      x: player.x + Math.cos(angle) * 32,
+      y: player.y + Math.sin(angle) * 32,
+      vx: Math.cos(angle) * weapon.speed,
+      vy: Math.sin(angle) * weapon.speed,
+      damage: weapon.damage,
+      color: weapon.color,
+      size: weapon.size,
+      expiresAt: now + weapon.ttl
+    });
+  }
 }
 
 function killPlayer(room, victim, killer) {
@@ -123,6 +144,65 @@ function killPlayer(room, victim, killer) {
     killer.score += 1;
     killer.streak += 1;
   }
+}
+
+function resetPlayerForRound(player, index, now) {
+  const spawn = SPAWNS[index % SPAWNS.length];
+  player.x = spawn[0];
+  player.y = spawn[1];
+  player.angle = index % 2 ? Math.PI : 0;
+  player.health = 3;
+  player.streak = 0;
+  player.boost = 0;
+  player.shield = now + 900;
+  player.weapon = 'blaster';
+  player.weaponUntil = 0;
+  player.respawnAt = 0;
+  player.lastShot = now;
+  player.input = { up: false, down: false, left: false, right: false };
+}
+
+function roundLeader(room) {
+  return [...room.players.values()].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))[0] || null;
+}
+
+function beginRound(room, now) {
+  room.phase = 'playing';
+  room.roundEndsAt = now + ROUND_DURATIONS[room.roundIndex];
+  room.celebrationEndsAt = 0;
+  room.winner = null;
+  room.projectiles = [];
+  room.pickups = [];
+  room.nextPickupAt = now + 1200;
+  [...room.players.values()].forEach((player, index) => resetPlayerForRound(player, index, now));
+}
+
+function startCelebration(room, now) {
+  const leader = roundLeader(room);
+  room.phase = 'celebration';
+  room.celebrationEndsAt = now + CELEBRATION_MS;
+  room.winner = leader && { id: leader.id, name: leader.name, score: leader.score, final: room.roundIndex === ROUND_DURATIONS.length - 1 };
+  room.projectiles = [];
+  for (const player of room.players.values()) player.input = { up: false, down: false, left: false, right: false };
+}
+
+function updateMatch(room, now) {
+  if (room.phase === 'celebration') {
+    if (now < room.celebrationEndsAt) return false;
+    if (room.roundIndex === ROUND_DURATIONS.length - 1) {
+      room.roundIndex = 0;
+      for (const player of room.players.values()) player.score = 0;
+    } else {
+      room.roundIndex += 1;
+    }
+    beginRound(room, now);
+    return false;
+  }
+  if (now >= room.roundEndsAt) {
+    startCelebration(room, now);
+    return true;
+  }
+  return false;
 }
 
 function angleDifference(from, to) {
@@ -146,6 +226,7 @@ function updateBot(room, bot) {
 
 function updateRoom(room, dt) {
   const now = Date.now();
+  if (updateMatch(room, now) || room.phase !== 'playing') return;
   for (const [index, player] of [...room.players.values()].entries()) {
     if (player.isBot) updateBot(room, player);
     if (player.respawnAt && now >= player.respawnAt) {
@@ -158,6 +239,7 @@ function updateRoom(room, dt) {
       continue;
     }
     if (!alive(player)) continue;
+    if (player.weaponUntil && player.weaponUntil <= now) player.weapon = 'blaster';
     const turning = (player.input.right ? 1 : 0) - (player.input.left ? 1 : 0);
     player.angle += turning * 3.2 * dt;
     const direction = (player.input.up ? 1 : 0) - (player.input.down ? 0.55 : 0);
@@ -174,6 +256,10 @@ function updateRoom(room, dt) {
         if (pickup.kind === 'boost') player.boost = now + 2600;
         if (pickup.kind === 'shield') player.shield = now + 2800;
         if (pickup.kind === 'repair') player.health = Math.min(3, player.health + 1);
+        if (pickup.kind === 'rocket' || pickup.kind === 'triple') {
+          player.weapon = pickup.kind;
+          player.weaponUntil = now + 9000;
+        }
         room.pickups.splice(i, 1);
       }
     }
@@ -194,7 +280,7 @@ function updateRoom(room, dt) {
       if (Math.hypot(shot.x - player.x, shot.y - player.y) < 27) {
         const owner = room.players.get(shot.ownerId);
         if (player.shield <= now) {
-          player.health -= 1;
+          player.health -= shot.damage;
           player.flash = 0.18;
           if (player.health <= 0) killPlayer(room, player, owner);
         }
@@ -204,23 +290,30 @@ function updateRoom(room, dt) {
     }
   }
 
-  if (now >= room.nextPickupAt && room.pickups.length < 5) {
+  if (now >= room.nextPickupAt && room.pickups.length < 6) {
     addPickup(room);
     room.nextPickupAt = now + 2600;
   }
 }
 
 function serialiseRoom(room) {
+  const now = Date.now();
   return {
+    maxPlayers: MAX_PLAYERS,
+    round: room.roundIndex + 1,
+    totalRounds: ROUND_DURATIONS.length,
+    phase: room.phase,
+    timeLeft: room.phase === 'playing' ? Math.max(0, room.roundEndsAt - now) : 0,
+    winner: room.winner,
     world: WORLD,
     obstacles: OBSTACLES,
     players: [...room.players.values()].map((p) => ({
       id: p.id, name: p.name, x: p.x, y: p.y, angle: p.angle, color: p.color,
-      health: p.health, score: p.score, streak: p.streak, boost: p.boost > Date.now(),
-      shield: p.shield > Date.now(), respawning: p.respawnAt ? Math.max(0, p.respawnAt - Date.now()) : 0,
+      health: p.health, score: p.score, streak: p.streak, boost: p.boost > now,
+      shield: p.shield > now, weapon: p.weapon, respawning: p.respawnAt ? Math.max(0, p.respawnAt - now) : 0,
       flash: p.flash > 0, bot: p.isBot
     })),
-    projectiles: room.projectiles.map((s) => ({ x: s.x, y: s.y })),
+    projectiles: room.projectiles.map((s) => ({ x: s.x, y: s.y, color: s.color, size: s.size })),
     pickups: room.pickups
   };
 }
@@ -242,7 +335,7 @@ io.on('connection', (socket) => {
       room = createRoom(code);
       rooms.set(code, room);
     }
-    if (room.players.size >= 8) return reply && reply({ ok: false, error: 'This lobby is full.' });
+    if (room.players.size >= MAX_PLAYERS) return reply && reply({ ok: false, error: 'This lobby is full (10 drivers max).' });
     const player = makePlayer(socket.id, name, room.players.size);
     room.players.set(socket.id, player);
     if (solo) addSoloBots(room);

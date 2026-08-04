@@ -38,10 +38,11 @@ button { border: 0; cursor: pointer; font-family: inherit; font-weight: 900; }
 
 #hud { position: fixed; z-index: 2; inset: 0; pointer-events: none; }
 .hud-top { display: flex; justify-content: center; align-items: flex-start; gap: 10px; padding: 17px; }
-.room-badge, .status, .icon-button, .leaderboard, .self-card { border: 1px solid rgba(216, 232, 255, .18); background: rgba(8, 15, 38, .77); box-shadow: 0 4px 18px rgba(0, 0, 0, .14); backdrop-filter: blur(7px); }
+.room-badge, .timer, .status, .icon-button, .leaderboard, .self-card { border: 1px solid rgba(216, 232, 255, .18); background: rgba(8, 15, 38, .77); box-shadow: 0 4px 18px rgba(0, 0, 0, .14); backdrop-filter: blur(7px); }
 .room-badge { min-width: 99px; padding: 7px 12px 6px; text-align: center; border-radius: 10px; line-height: 1; }
 .room-badge span { display: block; color: #abb8dc; font-size: 9px; font-weight: 900; letter-spacing: 1.3px; }
 .room-badge strong { display: block; margin-top: 4px; color: var(--lime); font-size: 14px; letter-spacing: 1px; }
+.timer { min-width: 94px; padding: 6px 12px 5px; text-align: center; border-radius: 10px; line-height: 1; }.timer span { display: block; color: #abb8dc; font-size: 9px; font-weight: 900; letter-spacing: 1.05px; }.timer strong { display: block; margin-top: 3px; color: #fff7bd; font: 800 20px/1 'Barlow Condensed', sans-serif; letter-spacing: .7px; }
 .status { display: flex; align-items: center; gap: 7px; padding: 10px 13px; border-radius: 10px; color: #c4d2f0; font-size: 12px; font-weight: 800; }
 .status i { width: 8px; height: 8px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 8px var(--lime); }
 .icon-button { pointer-events: auto; width: 36px; height: 36px; border-radius: 10px; color: #d6e2ff; font-size: 26px; line-height: 1; }
@@ -53,7 +54,7 @@ button { border: 0; cursor: pointer; font-family: inherit; font-weight: 900; }
 .self-card { position: fixed; bottom: 18px; left: 18px; padding: 10px 13px; min-width: 164px; border-radius: 12px; }
 .health { display: flex; gap: 3px; margin-top: 5px; }.heart { color: #ff5b64; font-size: 15px; }.heart.empty { color: #5a6688; }
 .boost { color: var(--lime); font-size: 10px; font-weight: 900; letter-spacing: .8px; }
-.message { position: fixed; top: 49%; left: 50%; transform: translate(-50%, -50%); font: italic 800 35px/1 'Barlow Condensed', sans-serif; text-align: center; color: #fff; text-shadow: 0 3px 0 #2a1740; }
+.message { position: fixed; top: 49%; left: 50%; transform: translate(-50%, -50%); font: italic 800 35px/1 'Barlow Condensed', sans-serif; text-align: center; white-space: pre-line; color: #fff; text-shadow: 0 3px 0 #2a1740; }.message.celebration { color: var(--lime); font-size: clamp(38px, 6vw, 70px); text-shadow: 0 4px 0 #31551a, 0 0 30px rgba(186,255,66,.5); animation: winner-pop .45s ease-out both; }
 .controls { position: fixed; z-index: 2; right: 18px; bottom: 18px; color: rgba(217, 227, 255, .58); font-size: 11px; letter-spacing: .2px; pointer-events: none; }.controls b { color: rgba(255,255,255,.88); }.controls em { padding: 0 4px; color: #6d7da8; }
 .toast { position: fixed; z-index: 4; top: 76px; left: 50%; transform: translateX(-50%); padding: 9px 15px; border-radius: 20px; background: #ffb547; color: #352000; font-size: 12px; font-weight: 900; }
 
@@ -62,6 +63,7 @@ button { border: 0; cursor: pointer; font-family: inherit; font-weight: 900; }
 .touch-key:active, .fire-button:active { transform: scale(.93); filter: brightness(1.3); }
 
 @media (pointer: coarse), (max-width: 700px) {
-  #touch-controls:not([hidden]) { display: flex; }.controls { display: none; }.leaderboard { top: 75px; right: 9px; width: 142px; padding: 9px; }.self-card { left: 9px; bottom: 148px; }.hud-top { padding: 9px; }.status { max-width: 145px; }.panel { padding: 29px 24px; }
+  #touch-controls:not([hidden]) { display: flex; }.controls { display: none; }.leaderboard { top: 75px; right: 9px; width: 142px; padding: 9px; }.self-card { left: 9px; bottom: 148px; }.hud-top { gap: 5px; padding: 9px; }.room-badge { min-width: 76px; }.timer { min-width: 70px; }.status { max-width: 120px; }.panel { padding: 29px 24px; }
 }
 @media (max-width: 480px) { .message { font-size: 28px; }.leaderboard { display: none; } }
+@keyframes winner-pop { from { opacity: 0; transform: translate(-50%, -42%) scale(.55) rotate(-4deg); } to { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); } }
