@@ -11,6 +11,20 @@ npm start
 
 Open `http://localhost:3000`. To play on the same Wi-Fi network, open `http://YOUR-COMPUTER-IP:3000` on each friend's device.
 
+## Run on Windows
+
+1. Install the current [Node.js LTS](https://nodejs.org/).
+2. Download this repository as a ZIP from GitHub and extract it, or clone it with Git.
+3. Open **PowerShell** in the `kart-clash` folder and run:
+   ```powershell
+   npm install
+   npm start
+   ```
+4. Open `http://localhost:3000` in Chrome or Microsoft Edge.
+5. Enter a name and room code. The first human driver is the **HOST**. Wait for everyone to join, then the host presses **Start match**.
+
+To install it like a Windows app, open the running or deployed game in **Microsoft Edge** or **Google Chrome**, then choose **Install Kart Clash** from the address-bar app/install icon. It will be added to the Start menu like a normal app.
+
 ## Controls
 
 - **W / Up** — accelerate
@@ -21,7 +35,7 @@ Open `http://localhost:3000`. To play on the same Wi-Fi network, open `http://YO
 
 ## Match rules and power-ups
 
-Every match has three timed rounds: **3 minutes**, then **1 minute**, then **1 minute**. Takedowns add to your high score; the leading driver is celebrated for three seconds after each round, and the final high-score leader wins the match.
+Every match begins in a lobby. The first human driver is marked **HOST**, sees the list of all drivers (up to 10), and is the only player who can press **Start match**. Every match then has three timed rounds: **3 minutes**, then **1 minute**, then **1 minute**. Takedowns add to your high score; the leading driver is celebrated for three seconds after each round, and the final high-score leader wins the match.
 
 - ⚡ **Turbo** — temporary speed boost
 - ◈ **Shield** — temporary damage protection

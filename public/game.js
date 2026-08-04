@@ -9,6 +9,7 @@ const hud = document.querySelector('#hud');
 const touchControls = document.querySelector('#touch-controls');
 const roomCode = document.querySelector('#room-code');
 const matchTimer = document.querySelector('#match-timer');
+const startMatchButton = document.querySelector('#start-match');
 const status = document.querySelector('#status span');
 const leaderboard = document.querySelector('#leaderboard');
 const selfCard = document.querySelector('#self-card');
@@ -108,6 +109,11 @@ function enterLobby(solo = false) {
 
 form.addEventListener('submit', (event) => { event.preventDefault(); enterLobby(); });
 document.querySelector('#solo').addEventListener('click', () => enterLobby(true));
+startMatchButton.addEventListener('click', () => {
+  socket.emit('start-match', (reply) => {
+    if (!reply?.ok) message.textContent = reply?.error || 'Unable to start match.';
+  });
+});
 window.addEventListener('beforeinstallprompt', (event) => {
   event.preventDefault();
   installPrompt = event;
@@ -141,7 +147,7 @@ socket.on('disconnect', () => { if (joined) reconnecting.hidden = false; });
 socket.on('connect', () => {
   reconnecting.hidden = true;
   // A reconnect gets a new socket id, so register this driver in the room again.
-  if (joined && currentRoom) socket.emit('join', { name: nameInput.value.trim() || 'Driver', room: currentRoom });
+  if (joined && currentRoom) socket.emit('join', { name: nameInput.value.trim() || 'Driver', room: currentRoom, rejoin: true });
 });
 
 function me() { return game?.players.find((player) => player.id === socket.id); }
@@ -256,13 +262,24 @@ function draw() {
 
 function updateHud(you) {
   const sorted = [...game.players].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
-  leaderboard.innerHTML = `<h2>High score</h2>${sorted.map((player, index) => `<div class="rank ${player.id === socket.id ? 'me' : ''}"><span class="place">${index + 1}.</span><span>${escapeHtml(player.name)}${player.bot ? ' <small>AI</small>' : ''}</span><span class="points">${player.score}</span></div>`).join('')}`;
-  matchTimer.innerHTML = `<span>ROUND ${game.round} / ${game.totalRounds}</span><strong>${formatTime(game.timeLeft)}</strong>`;
-  status.textContent = game.phase === 'celebration' ? 'Score locked — winner!' : `${game.players.length} / ${game.maxPlayers} drivers`;
+  const isLobby = game.phase === 'lobby';
+  leaderboard.innerHTML = `<h2>${isLobby ? `Drivers (${game.players.length} / ${game.maxPlayers})` : 'High score'}</h2>${sorted.map((player, index) => `<div class="rank ${player.id === socket.id ? 'me' : ''}"><span class="place">${index + 1}.</span><span>${escapeHtml(player.name)}${player.id === game.hostId ? ' <small>HOST</small>' : player.bot ? ' <small>AI</small>' : ''}</span><span class="points">${isLobby ? 'READY' : player.score}</span></div>`).join('')}`;
+  matchTimer.innerHTML = isLobby
+    ? '<span>LOBBY</span><strong>READY</strong>'
+    : `<span>ROUND ${game.round} / ${game.totalRounds}</span><strong>${formatTime(game.timeLeft)}</strong>`;
+  startMatchButton.hidden = !isLobby || game.hostId !== socket.id;
+  status.textContent = isLobby
+    ? (game.hostId === socket.id ? `You are host • ${game.players.length} / ${game.maxPlayers} ready` : `Waiting for ${game.hostName || 'host'} to start`)
+    : game.phase === 'celebration' ? 'Score locked — winner!' : `${game.players.length} / ${game.maxPlayers} drivers`;
   if (!you) return;
   const hearts = Array.from({ length: 3 }, (_, index) => `<span class="heart ${index >= you.health ? 'empty' : ''}">♥</span>`).join('');
   selfCard.innerHTML = `<div>${escapeHtml(you.name)} <span style="color:#aebce4;font-size:11px">${you.score} TAKEDOWNS</span></div><div class="health">${hearts}</div><div class="boost" style="color:${you.weapon === 'rocket' ? '#ff9a6e' : you.weapon === 'triple' ? '#d7ff4d' : '#b6c5e8'}">${WEAPON_LABELS[you.weapon] || WEAPON_LABELS.blaster}</div>${you.boost ? '<div class="boost">⚡ TURBO ACTIVE</div>' : you.shield ? '<div class="boost" style="color:#55dcff">◈ SHIELD ACTIVE</div>' : ''}`;
-  if (game.phase === 'celebration' && game.winner) {
+  if (isLobby) {
+    message.classList.remove('celebration');
+    message.textContent = game.hostId === socket.id
+      ? `LOBBY READY\nWait for drivers, then press Start match.`
+      : `LOBBY\n${game.hostName || 'Host'} will start the match.`;
+  } else if (game.phase === 'celebration' && game.winner) {
     message.textContent = `${game.winner.final ? 'MATCH WINNER!' : 'ROUND WINNER!'}\n${game.winner.name} • ${game.winner.score} POINTS`;
     message.classList.add('celebration');
   } else {

@@ -49,10 +49,11 @@ function createRoom(code) {
     pickups: [],
     nextPickupAt: now + 2000,
     roundIndex: 0,
-    roundEndsAt: now + ROUND_DURATIONS[0],
-    phase: 'playing',
+    roundEndsAt: 0,
+    phase: 'lobby',
     celebrationEndsAt: 0,
-    winner: null
+    winner: null,
+    hostId: null
   };
 }
 
@@ -73,6 +74,12 @@ function addSoloBots(room) {
     const id = `bot-${room.code}-${index}`;
     if (!room.players.has(id)) room.players.set(id, makePlayer(id, name, room.players.size, true));
   });
+}
+
+function assignHost(room) {
+  if (!room.hostId || !room.players.has(room.hostId)) {
+    room.hostId = [...room.players.values()].find((player) => !player.isBot)?.id || null;
+  }
 }
 
 function alive(player) {
@@ -226,6 +233,7 @@ function updateBot(room, bot) {
 
 function updateRoom(room, dt) {
   const now = Date.now();
+  if (room.phase === 'lobby') return;
   if (updateMatch(room, now) || room.phase !== 'playing') return;
   for (const [index, player] of [...room.players.values()].entries()) {
     if (player.isBot) updateBot(room, player);
@@ -298,11 +306,14 @@ function updateRoom(room, dt) {
 
 function serialiseRoom(room) {
   const now = Date.now();
+  const host = room.players.get(room.hostId);
   return {
     maxPlayers: MAX_PLAYERS,
     round: room.roundIndex + 1,
     totalRounds: ROUND_DURATIONS.length,
     phase: room.phase,
+    hostId: room.hostId,
+    hostName: host ? host.name : '',
     timeLeft: room.phase === 'playing' ? Math.max(0, room.roundEndsAt - now) : 0,
     winner: room.winner,
     world: WORLD,
@@ -325,6 +336,7 @@ io.on('connection', (socket) => {
       ? `SOLO-${socket.id.slice(0, 6).toUpperCase()}`
       : cleanText(payload && payload.room, 'PITSTOP', 12).toUpperCase();
     const name = cleanText(payload && payload.name, 'Driver', 14);
+    const rejoin = Boolean(payload && payload.rejoin);
     if (socket.data.roomCode) {
       const oldRoom = rooms.get(socket.data.roomCode);
       oldRoom && oldRoom.players.delete(socket.id);
@@ -335,13 +347,27 @@ io.on('connection', (socket) => {
       room = createRoom(code);
       rooms.set(code, room);
     }
+    if (room.phase !== 'lobby' && !rejoin) return reply && reply({ ok: false, error: 'This match has already started.' });
     if (room.players.size >= MAX_PLAYERS) return reply && reply({ ok: false, error: 'This lobby is full (10 drivers max).' });
     const player = makePlayer(socket.id, name, room.players.size);
     room.players.set(socket.id, player);
     if (solo) addSoloBots(room);
+    assignHost(room);
     socket.join(code);
     socket.data.roomCode = code;
     reply && reply({ ok: true, code });
+  });
+
+  socket.on('start-match', (reply) => {
+    const room = rooms.get(socket.data.roomCode);
+    const player = room && room.players.get(socket.id);
+    if (!room || !player) return reply && reply({ ok: false, error: 'Join a lobby first.' });
+    if (room.hostId !== socket.id) return reply && reply({ ok: false, error: 'Only the host can start the match.' });
+    if (room.phase !== 'lobby') return reply && reply({ ok: false, error: 'This match is already running.' });
+    room.roundIndex = 0;
+    for (const driver of room.players.values()) driver.score = 0;
+    beginRound(room, Date.now());
+    reply && reply({ ok: true });
   });
 
   socket.on('input', (input) => {
@@ -363,6 +389,7 @@ io.on('connection', (socket) => {
     const room = rooms.get(socket.data.roomCode);
     if (!room) return;
     room.players.delete(socket.id);
+    assignHost(room);
     if (![...room.players.values()].some((player) => !player.isBot)) rooms.delete(room.code);
   });
 });
