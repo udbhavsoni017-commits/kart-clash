@@ -42,15 +42,23 @@ function createRoom(code) {
   };
 }
 
-function makePlayer(id, name, index) {
+function makePlayer(id, name, index, isBot = false) {
   const spawn = SPAWNS[index % SPAWNS.length];
   return {
     id, name, x: spawn[0], y: spawn[1], angle: index % 2 ? Math.PI : 0,
     color: COLORS[index % COLORS.length], health: 3, score: 0, streak: 0,
     boost: 0, shield: 0, respawnAt: 0, lastShot: 0,
     input: { up: false, down: false, left: false, right: false },
-    flash: 0
+    flash: 0, isBot
   };
+}
+
+function addSoloBots(room) {
+  const botNames = ['Bolt', 'Luna', 'Rex'];
+  botNames.forEach((name, index) => {
+    const id = `bot-${room.code}-${index}`;
+    if (!room.players.has(id)) room.players.set(id, makePlayer(id, name, room.players.size, true));
+  });
 }
 
 function alive(player) {
@@ -117,9 +125,29 @@ function killPlayer(room, victim, killer) {
   }
 }
 
+function angleDifference(from, to) {
+  return Math.atan2(Math.sin(to - from), Math.cos(to - from));
+}
+
+function updateBot(room, bot) {
+  if (!alive(bot)) return;
+  const targets = [...room.players.values()].filter((player) => player.id !== bot.id && alive(player));
+  if (!targets.length) return;
+  const target = targets.sort((a, b) => Math.hypot(a.x - bot.x, a.y - bot.y) - Math.hypot(b.x - bot.x, b.y - bot.y))[0];
+  const wantedAngle = Math.atan2(target.y - bot.y, target.x - bot.x);
+  const difference = angleDifference(bot.angle, wantedAngle);
+  bot.input.left = difference < -0.12;
+  bot.input.right = difference > 0.12;
+  bot.input.up = true;
+  bot.input.down = false;
+  const distance = Math.hypot(target.x - bot.x, target.y - bot.y);
+  if (Math.abs(difference) < 0.18 && distance < 560) fire(room, bot);
+}
+
 function updateRoom(room, dt) {
   const now = Date.now();
   for (const [index, player] of [...room.players.values()].entries()) {
+    if (player.isBot) updateBot(room, player);
     if (player.respawnAt && now >= player.respawnAt) {
       const spawn = SPAWNS[(index + Math.floor(now / 1400)) % SPAWNS.length];
       player.x = spawn[0];
@@ -190,7 +218,7 @@ function serialiseRoom(room) {
       id: p.id, name: p.name, x: p.x, y: p.y, angle: p.angle, color: p.color,
       health: p.health, score: p.score, streak: p.streak, boost: p.boost > Date.now(),
       shield: p.shield > Date.now(), respawning: p.respawnAt ? Math.max(0, p.respawnAt - Date.now()) : 0,
-      flash: p.flash > 0
+      flash: p.flash > 0, bot: p.isBot
     })),
     projectiles: room.projectiles.map((s) => ({ x: s.x, y: s.y })),
     pickups: room.pickups
@@ -199,7 +227,10 @@ function serialiseRoom(room) {
 
 io.on('connection', (socket) => {
   socket.on('join', (payload, reply) => {
-    const code = cleanText(payload && payload.room, 'PITSTOP', 12).toUpperCase();
+    const solo = Boolean(payload && payload.solo);
+    const code = solo
+      ? `SOLO-${socket.id.slice(0, 6).toUpperCase()}`
+      : cleanText(payload && payload.room, 'PITSTOP', 12).toUpperCase();
     const name = cleanText(payload && payload.name, 'Driver', 14);
     if (socket.data.roomCode) {
       const oldRoom = rooms.get(socket.data.roomCode);
@@ -214,6 +245,7 @@ io.on('connection', (socket) => {
     if (room.players.size >= 8) return reply && reply({ ok: false, error: 'This lobby is full.' });
     const player = makePlayer(socket.id, name, room.players.size);
     room.players.set(socket.id, player);
+    if (solo) addSoloBots(room);
     socket.join(code);
     socket.data.roomCode = code;
     reply && reply({ ok: true, code });
@@ -238,7 +270,7 @@ io.on('connection', (socket) => {
     const room = rooms.get(socket.data.roomCode);
     if (!room) return;
     room.players.delete(socket.id);
-    if (!room.players.size) rooms.delete(room.code);
+    if (![...room.players.values()].some((player) => !player.isBot)) rooms.delete(room.code);
   });
 });
 

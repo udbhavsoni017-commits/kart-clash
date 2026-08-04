@@ -81,11 +81,11 @@ for (const button of document.querySelectorAll('[data-key]')) {
 }
 document.querySelector('#touch-fire').addEventListener('pointerdown', (event) => { event.preventDefault(); fire(); });
 
-function enterLobby() {
+function enterLobby(solo = false) {
   const name = nameInput.value.trim() || 'Driver';
   const room = roomInput.value.trim() || 'PITSTOP';
   socket.connect();
-  socket.emit('join', { name, room }, (reply) => {
+  socket.emit('join', { name, room, solo }, (reply) => {
     if (!reply?.ok) {
       document.querySelector('#join').textContent = reply?.error || 'Unable to join';
       setTimeout(() => { document.querySelector('#join').innerHTML = 'Start engines <span>→</span>'; }, 1800);
@@ -102,6 +102,7 @@ function enterLobby() {
 }
 
 form.addEventListener('submit', (event) => { event.preventDefault(); enterLobby(); });
+document.querySelector('#solo').addEventListener('click', () => enterLobby(true));
 document.querySelector('#leave').addEventListener('click', () => {
   joined = false; game = null; socket.disconnect();
   hud.hidden = true; touchControls.hidden = true; menu.hidden = false;

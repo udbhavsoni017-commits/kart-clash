@@ -1,6 +1,6 @@
 # Kart Clash
 
-A small, no-account multiplayer kart battle game inspired by arcade kart combat games. Share a room code with friends, collect boosts, and blast the other karts.
+A small, no-account kart battle game inspired by arcade kart combat games. Start a **Solo battle** against three AI karts, or share a room code with friends for multiplayer.
 
 ## Run it locally
 
