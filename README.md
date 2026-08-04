@@ -1,6 +1,29 @@
 # Kart Clash
 
-A small, no-account kart battle game inspired by arcade kart combat games. Start a **Solo battle** against three AI karts, or share a room code with friends for multiplayer (up to 10 drivers per room).
+![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?logo=nodedotjs&logoColor=white)
+![Multiplayer](https://img.shields.io/badge/players-1--10-34c8ff)
+![License](https://img.shields.io/badge/license-MIT-baff42)
+
+An installable arcade kart battle game. Race solo against AI karts or host a private lobby for up to 10 friends — no account required.
+
+## Highlights
+
+- **Host-controlled lobbies:** the first driver is host and chooses when to start.
+- **Solo or multiplayer:** play against three bots or share a room code with friends.
+- **Three-round match:** 3:00, 1:00, then 1:00, with score-based winners.
+- **Power-ups:** turbo, shield, repair, rocket, and triple-shot pickups.
+- **PWA ready:** install it from Chrome, Edge, Safari, or an Android home screen.
+
+## Quick start
+
+```bash
+git clone https://github.com/udbhavsoni017-commits/kart-clash.git
+cd kart-clash
+npm install
+npm start
+```
+
+Then open [http://localhost:3000](http://localhost:3000).
 
 ## Run it locally
 
@@ -55,13 +78,20 @@ The installed app has its own icon and opens without the browser address bar. An
 
 ## Put it online for friends
 
-1. Create a new empty GitHub repository.
-2. Add it as `origin` and push this project:
-   ```bash
-   git remote add origin https://github.com/YOUR-USERNAME/kart-clash.git
-   git push -u origin main
-   ```
-3. In [Render](https://render.com), create a **New Web Service**, connect the repository, and deploy. The included `render.yaml` supplies the configuration.
-4. Send the Render URL to friends. Everyone enters the same room code from the landing screen.
+1. Fork this repository or use your own GitHub copy.
+2. In [Render](https://render.com), create a **New Web Service** and connect the repository. The included `render.yaml` supplies the configuration.
+3. Deploy and send the Render URL to friends. Everyone enters the same room code from the landing screen.
 
 The game uses Socket.IO, so all players in the same room see the same server-authoritative game state.
+
+## Project structure
+
+```text
+public/       Browser game, PWA manifest, icons, and service worker
+server.js     Socket.IO game server and authoritative match rules
+render.yaml   One-click deployment configuration for Render
+```
+
+## Contributing
+
+Ideas and improvements are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
