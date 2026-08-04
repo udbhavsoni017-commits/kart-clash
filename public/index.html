@@ -4,7 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#111935" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Kart Clash" />
     <title>Kart Clash — multiplayer arcade battle</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet" />
@@ -28,8 +34,9 @@
           </label>
           <button id="join" type="submit">Start engines <span>→</span></button>
           <button id="solo" type="button" class="solo-button">Solo battle <span>vs 3 bots</span></button>
+          <button id="install" type="button" class="install-button" hidden>Install Kart Clash <span>↓</span></button>
         </form>
-        <p class="hint">Play solo against bots, or send friends this link and use the same room code.</p>
+        <p id="install-help" class="hint">Play solo against bots, or send friends this link and use the same room code.</p>
       </section>
 
       <section id="hud" hidden>

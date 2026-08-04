@@ -33,6 +33,7 @@ button { border: 0; cursor: pointer; font-family: inherit; font-weight: 900; }
 #join span { font-size: 22px; padding-left: 5px; }
 .solo-button { padding: 11px 16px; border: 1px solid rgba(191, 211, 255, .25); border-radius: 10px; background: rgba(82, 102, 157, .21); color: #e4ecff; font-size: 14px; }
 .solo-button:hover { border-color: #baff42; background: rgba(186, 255, 66, .1); }.solo-button span { margin-left: 5px; color: #baff42; font-size: 11px; }
+.install-button { padding: 10px 16px; border: 1px solid rgba(186, 255, 66, .35); border-radius: 10px; background: rgba(186, 255, 66, .12); color: #dfffb1; font-size: 13px; }.install-button:hover { background: rgba(186, 255, 66, .2); }.install-button span { font-size: 17px; padding-left: 4px; }
 .hint { margin: 21px 4px 0; color: #aab7dc; text-align: center; font-size: 12px; line-height: 1.45; }
 
 #hud { position: fixed; z-index: 2; inset: 0; pointer-events: none; }

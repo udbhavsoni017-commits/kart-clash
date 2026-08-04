@@ -13,6 +13,8 @@ const leaderboard = document.querySelector('#leaderboard');
 const selfCard = document.querySelector('#self-card');
 const message = document.querySelector('#message');
 const reconnecting = document.querySelector('#disconnected');
+const installButton = document.querySelector('#install');
+const installHelp = document.querySelector('#install-help');
 
 const socket = io({ autoConnect: false });
 let game = null;
@@ -21,6 +23,7 @@ let currentRoom = '';
 const keys = { up: false, down: false, left: false, right: false };
 let lastInput = '';
 let lastShot = 0;
+let installPrompt = null;
 
 const palette = {
   grass: '#2f9a70', grassDark: '#23865e', road: '#30385d', roadEdge: '#52618b',
@@ -103,6 +106,29 @@ function enterLobby(solo = false) {
 
 form.addEventListener('submit', (event) => { event.preventDefault(); enterLobby(); });
 document.querySelector('#solo').addEventListener('click', () => enterLobby(true));
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  installPrompt = event;
+  installButton.hidden = false;
+  installHelp.textContent = 'Install Kart Clash to launch it from your home screen.';
+});
+installButton.addEventListener('click', async () => {
+  if (installPrompt) {
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    installPrompt = null;
+    installButton.hidden = true;
+    return;
+  }
+  installHelp.textContent = 'On iPhone or iPad: tap Share, then Add to Home Screen.';
+});
+window.addEventListener('appinstalled', () => {
+  installButton.hidden = true;
+  installHelp.textContent = 'Kart Clash is installed — enjoy the ride!';
+});
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+}
 document.querySelector('#leave').addEventListener('click', () => {
   joined = false; game = null; socket.disconnect();
   hud.hidden = true; touchControls.hidden = true; menu.hidden = false;

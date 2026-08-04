@@ -19,6 +19,16 @@ Open `http://localhost:3000`. To play on the same Wi-Fi network, open `http://YO
 - **Space** — fire
 - Touch controls appear on mobile
 
+## Install it like an app
+
+After the game is deployed to an HTTPS address, open it in Chrome, Edge, or Safari:
+
+- **Desktop:** click **Install Kart Clash** when it appears, or use the browser's install icon in the address bar.
+- **iPhone/iPad:** open the game in Safari, tap **Share**, then choose **Add to Home Screen**.
+- **Android:** open it in Chrome and choose **Install app** / **Add to Home screen**.
+
+The installed app has its own icon and opens without the browser address bar. An internet connection is still needed for multiplayer matches.
+
 ## Put it online for friends
 
 1. Create a new empty GitHub repository.
