@@ -263,11 +263,13 @@ function draw() {
 function updateHud(you) {
   const sorted = [...game.players].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
   const isLobby = game.phase === 'lobby';
+  const soloLobby = game.players.some((player) => player.bot);
   leaderboard.innerHTML = `<h2>${isLobby ? `Drivers (${game.players.length} / ${game.maxPlayers})` : 'High score'}</h2>${sorted.map((player, index) => `<div class="rank ${player.id === socket.id ? 'me' : ''}"><span class="place">${index + 1}.</span><span>${escapeHtml(player.name)}${player.id === game.hostId ? ' <small>HOST</small>' : player.bot ? ' <small>AI</small>' : ''}</span><span class="points">${isLobby ? 'READY' : player.score}</span></div>`).join('')}`;
   matchTimer.innerHTML = isLobby
     ? '<span>LOBBY</span><strong>READY</strong>'
     : `<span>ROUND ${game.round} / ${game.totalRounds}</span><strong>${formatTime(game.timeLeft)}</strong>`;
   startMatchButton.hidden = !isLobby || game.hostId !== socket.id;
+  startMatchButton.textContent = soloLobby ? 'Start solo match' : 'Start multiplayer match';
   status.textContent = isLobby
     ? (game.hostId === socket.id ? `You are host • ${game.players.length} / ${game.maxPlayers} ready` : `Waiting for ${game.hostName || 'host'} to start`)
     : game.phase === 'celebration' ? 'Score locked — winner!' : `${game.players.length} / ${game.maxPlayers} drivers`;
